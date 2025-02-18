@@ -14,20 +14,27 @@ namespace Osussist.src.osu.helpers
 
         public OsuManager(string ProcessName)
         {
-            ProcessManager = new OsuProcess(ProcessName);
-            WindowManager = new OsuWindow(ProcessManager.GameProcess.MainWindowHandle);
+            try
+            {
+                ProcessManager = new OsuProcess(ProcessName);
+                WindowManager = new OsuWindow(ProcessManager.GameProcess.MainWindowHandle);
 
-            if (ProcessManager.ClientType == ClientTypes.Stable)
-            {
-                DataManager = new OsuData(ProcessManager);
-                IPCManager = new OsuIPC(ProcessManager.GameProcess);
-                MemoryManager = new OsuMemory(ProcessManager.GameProcess);
-                logger.Info("SDK.OsuManager", "Memory reading and IPC have been enabled");
+                if (ProcessManager.ClientType == ClientTypes.Stable)
+                {
+                    DataManager = new OsuData(ProcessManager);
+                    IPCManager = new OsuIPC(ProcessManager.GameProcess);
+                    MemoryManager = new OsuMemory(ProcessManager.GameProcess);
+                    logger.Info("SDK.OsuManager", "Memory reading and IPC have been enabled");
+                }
+                else
+                {
+                    logger.Info("SDK.OsuManager", $"Client type {ProcessManager.ClientType.ToString()} does not support IPC and Memory reading");
+                    logger.Warning("SDK.OsuManager", $"Relax has been disabled on this client, Will fix this eventually ;_;");
+                }
             }
-            else
+            catch (Exception ex)
             {
-                logger.Info("SDK.OsuManager", $"Client type {ProcessManager.ClientType.ToString()} does not support IPC and Memory reading");
-                logger.Warning("SDK.OsuManager", $"Relax has been disabled on this client, Will fix this eventually ;_;");
+                logger.Error("SDK.OsuManager", $"Failed to initialize OsuManager: {ex.Message}");
             }
         }
     }

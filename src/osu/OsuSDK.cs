@@ -143,17 +143,25 @@ namespace Osussist.src.osu
         {
             get
             {
-                OsuManager.DataManager.UpdateDatabase();
-                DbBeatmap dbBeatmap = OsuManager.DataManager.Database.Beatmaps.Find((DbBeatmap b) => b.MD5Hash == MapHash);
-                if (dbBeatmap != null)
+                try
                 {
-                    return BeatmapDecoder.Decode(SongsPath + dbBeatmap.FolderName + "\\" + dbBeatmap.FileName);
+                    OsuManager.DataManager.UpdateDatabase();
+                    DbBeatmap dbBeatmap = OsuManager.DataManager.Database.Beatmaps.Find((DbBeatmap b) => b.MD5Hash == MapHash);
+                    if (dbBeatmap != null)
+                    {
+                        return BeatmapDecoder.Decode(SongsPath + dbBeatmap.FolderName + "\\" + dbBeatmap.FileName);
+                    }
+                    else
+                    {
+                        ValueTuple<string, string> beatmapTuple = NewBeatmaps.Find((x) => x.MD5 == MapHash);
+                        logger.Debug("SDK.OsuSDK", $"Beatmap found in new beatmaps: {beatmapTuple.Item2}");
+                        return BeatmapDecoder.Decode(beatmapTuple.Item2);
+                    }
                 }
-                else
+                catch (Exception ex)
                 {
-                    ValueTuple<string, string> beatmapTuple = NewBeatmaps.Find((x) => x.MD5 == MapHash);
-                    logger.Debug("SDK.OsuSDK", $"Beatmap found in new beatmaps: {beatmapTuple.Item2}");
-                    return BeatmapDecoder.Decode(beatmapTuple.Item2);
+                    logger.Error("SDK.OsuSDK", $"Failed to get current beatmap: {ex.Message}");
+                    return null;
                 }
             }
         }
@@ -178,20 +186,33 @@ namespace Osussist.src.osu
         {
             if (path.EndsWith(".osu"))
             {
-                try
+                int retryCount = 0;
+                const int maxRetries = 3;
+                while (retryCount < maxRetries)
                 {
-                    ValueTuple<string, string> beatmap = new ValueTuple<string, string>(OsuCrypto.GetMD5String(File.ReadAllBytes(path)), path);
-                    if (NewBeatmaps.Exists((x) => x.MD5 == beatmap.Item1))
+                    try
                     {
-                        NewBeatmaps.RemoveAll(beatmap => beatmap.MD5 == beatmap.Item1);
+                        ValueTuple<string, string> beatmap = new ValueTuple<string, string>(OsuCrypto.GetMD5String(File.ReadAllBytes(path)), path);
+                        if (NewBeatmaps.Exists((x) => x.MD5 == beatmap.Item1))
+                        {
+                            NewBeatmaps.RemoveAll(beatmap => beatmap.MD5 == beatmap.Item1);
+                        }
+                        this.NewBeatmaps.Add(beatmap);
+                        break;
                     }
-                    this.NewBeatmaps.Add(beatmap);
-                }
-                catch (IOException)
-                {
-                    logger.Error("SDK.OsuSDK", "Failed to read the beatmap file, attempting again in 500ms");
-                    Thread.Sleep(500);
-                    OnBeatmapImport(path);
+                    catch (IOException)
+                    {
+                        retryCount++;
+                        if (retryCount >= maxRetries)
+                        {
+                            logger.Error("SDK.OsuSDK", "Failed to read the beatmap file after multiple attempts");
+                        }
+                        else
+                        {
+                            logger.Error("SDK.OsuSDK", "Failed to read the beatmap file, retrying...");
+                            Thread.Sleep(500);
+                        }
+                    }
                 }
             }
             else

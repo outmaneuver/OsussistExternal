@@ -56,7 +56,7 @@ namespace Osussist.src.cheat.aimbot
 					CurrentBeatmap = Relax.CurrentBeatmap;
 					if (CurrentBeatmap == null)
 					{
-						logger.Info("Aimbot.Stable", "No beatmap loaded, stopping aimbot");
+						logger.Error("Aimbot.Stable", "CurrentBeatmap returned null, resetting aimbot");
 						ResetLoop();
 					}
 					else if (LastBeatmapId != CurrentBeatmap.MetadataSection.BeatmapID)

@@ -20,11 +20,18 @@ namespace Osussist.src.osu.helpers
 
         public void UpdateDatabase()
         {
-            string md5String = OsuCrypto.GetMD5String(File.ReadAllBytes(ProcessManager.GameFolder + "osu!.db"));
-            if (DatabaseMD5 != md5String)
+            try
             {
-                DatabaseMD5 = md5String;
-                Database = DatabaseDecoder.DecodeOsu(ProcessManager.GameFolder + "osu!.db");
+                string md5String = OsuCrypto.GetMD5String(File.ReadAllBytes(ProcessManager.GameFolder + "osu!.db"));
+                if (DatabaseMD5 != md5String)
+                {
+                    DatabaseMD5 = md5String;
+                    Database = DatabaseDecoder.DecodeOsu(ProcessManager.GameFolder + "osu!.db");
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.Error("OsuData", $"Failed to update database: {ex.Message}");
             }
         }
     }
